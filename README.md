@@ -1,64 +1,54 @@
 import json
-from datetime import datetime
+from collections import defaultdict
 
-def process_orders(file_path):
-    # Загрузка данных из файла
-    with open(file_path, 'r', encoding='utf-8') as file:
-        orders = json.load(file)
+# Загрузка данных из файла
+with open('orders.json', 'r', encoding='utf-8') as file:
+    orders = json.load(file)
 
-    max_cost_order = {'order_number': None, 'total_cost': 0}
-    max_items_order = {'order_number': None, 'total_items': 0}
-    daily_orders = {}
-    user_order_counts = {}
-    user_total_spent = {}
-    total_cost_sum = 0
-    total_items_sum = 0
-    total_products_cost = 0
-    total_products_count = 0
+# 1. Самый дорогой заказ
+most_expensive_order = max(orders, key=lambda x: x['total_price'])
+most_expensive_order_id = most_expensive_order['order_id']
 
-   
-    for order in orders:
-        # 1. Самый дорогой заказ
-        if order['total_cost'] > max_cost_order['total_cost']:
-            max_cost_order = {
-                'order_number': order['order_number'],
-                'total_cost': order['total_cost']
-            }
+# 2. Заказ с наибольшим количеством товаров
+most_items_order = max(orders, key=lambda x: len(x['items']))
+most_items_order_id = most_items_order['order_id']
 
-        # 2. Заказ с наибольшим количеством товаров
-        if order['total_items'] > max_items_order['total_items']:
-            max_items_order = {
-                'order_number': order['order_number'],
-                'total_items': order['total_items']
-            }
+# 3. День с наибольшим количеством заказов
+order_dates = [order['order_date'] for order in orders]
+date_count = defaultdict(int)
+for date in order_dates:
+    date_count[date] += 1
+busiest_day = max(date_count, key=lambda k: date_count[k])
 
-        # 3. Подсчет заказов по дням
-        order_date = datetime.strptime(order['date'], '%Y-%m-%d')
-        day = order_date.day
-        daily_orders[day] = daily_orders.get(day, 0) + 1
+# 4. Пользователь с наибольшим количеством заказов
+user_orders = defaultdict(int)
+for order in orders:
+    user_orders[order['user_id']] += 1
+most_orders_user = max(user_orders, key=lambda k: user_orders[k])
 
-        # 4. Подсчет заказов по пользователям
-        user_order_counts[order['user_id']] = user_order_counts.get(order['user_id'], 0) + 1
+# 5. Пользователь с наибольшей суммарной стоимостью заказов
+user_spending = defaultdict(float)
+for order in orders:
+    user_spending[order['user_id']] += order['total_price']
+top_spending_user = max(user_spending, key=lambda k: user_spending[k])
 
-        # 5. Суммарная стоимость по пользователям
-        user_total_spent[order['user_id']] = user_total_spent.get(order['user_id'], 0) + order['total_cost']
+# 6. Средняя стоимость заказа
+average_order_price = sum(order['total_price'] for order in orders) / len(orders)
 
-        # 6-7. Данные для средних значений
-        total_cost_sum += order['total_cost']
-        total_items_sum += order['total_items']
+# 7. Средняя стоимость товаров
+total_items_price = 0
+total_items_count = 0
+for order in orders:
+    items = order['items']
+    total_items_count += len(items)
+    total_items_price += sum(item['price'] for item in items)
+average_item_price = total_items_price / total_items_count if total_items_count > 0 else 0
 
-        # Расчет стоимости всех товаров
-        for item in order['items']:
-            total_products_cost += item['price'] * item['quantity']
-            total_products_count += item['quantity']
-
-    # Результаты
-    return {
-        'most_expensive_order': max_cost_order['order_number'],
-        'largest_items_order': max_items_order['order_number'],
-        'busiest_day': max(daily_orders, key=daily_orders.get),
-        'most_active_user': max(user_order_counts, key=user_order_counts.get),
-        'top_spender': max(user_total_spent, key=user_total_spent.get),
-        'average_order_value': total_cost_sum / len(orders),
-        'average_item_value': total_products_cost / total_products_count
-    }
+# Вывод результатов
+print(f"Самый дорогой заказ: {most_expensive_order_id}")
+print(f"Заказ с наибольшим количеством товаров: {most_items_order_id}")
+print(f"День с наибольшим количеством заказов: {busiest_day}")
+print(f"Пользователь с наибольшим количеством заказов: {most_orders_user}")
+print(f"Пользователь с наибольшей суммарной стоимостью заказов: {top_spending_user}")
+print(f"Средняя стоимость заказа: {average_order_price:.2f}")
+print(f"Средняя стоимость товаров: {average_item_price:.2f}")
